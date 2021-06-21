@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+{% load static %}
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>{{ page.name }}</title>
+    <link rel="stylesheet" type="text/css" href="{% static 'css/style.css' %}">
+</head>
+<body onload="start({{ page }}, {{ tree }}, {{ available_parents }});">
+
+
+<div id="record_exist">
+    <a href="{% url 'page_list' %}">
+        <button>Menu</button>
+    </a>
+    <button id="edit_button">Edit</button>
+    <button id="save_button" style="display: none;">Save</button>
+    <button id="cancel_button" style="display: none;">Cancel</button>
+    <button id="delete_button">Delete</button>
+    <p>Name:<input type="text" class="no_border" id="name" value="{{ page.name }}" readonly></p>
+    <div>
+        <div>
+            <p style="
+    display: inline-block;
+    vertical-align: top;
+    margin-top: 0px;">Content:</p> <textarea class="no_border" id="content" rows="20" cols="100" readonly="">{{ page.content }}</textarea>
+        </div>
+    </div>
+    <p>Parent: <select id="parent" disabled>
+        <option value="" selected>---</option>
+    </select></p>
+    <div id="tree_container">
+    </div>
+</div>
+
+<div id="record_deleted" style="display: none;">
+    <p>Record was deleted</p>
+    <a href="{% url 'page_list' %}">Go to record list</a>
+</div>
+<script type="text/javascript">
+    var levels = [];
+    var tree_container = document.getElementById("tree_container")
+    var nodes = {};
+    function adjustLine(from, to){
+      var fT = from.offsetTop  + from.offsetHeight/2;
+      var tT = to.offsetTop    + to.offsetHeight/2;
+      var fL = from.offsetLeft + from.offsetWidth/2;
+      var tL = to.offsetLeft   + to.offsetWidth/2;
+
+      var CA   = tT - fT;
+      var CO   = tL - fL;
+      var H    = Math.sqrt(CA*CA + CO*CO);
+      var ANG  = 180 / Math.PI * Math.acos( CA/H );
+
+      if(tT > fT){
+          var top  = (tT-fT)/2 + fT;
+      }else{
+          var top  = (fT-tT)/2 + tT;
+      }
+      if(tL > fL){
+          var left = (tL-fL)/2 + fL;
+      }else{
+          var left = (fL-tL)/2 + tL;
+      }
+
+      if(( fT < tT && fL < tL) || ( tT < fT && tL < fL) || (fT > tT && fL > tL) || (tT > fT && tL > fL)){
+        ANG *= -1;
+      }
+      top-= H/2;
+      line = document.createElement("div");
+      line.className="line";
+      div_record_exist.appendChild(line);
+      console.log('rotate('+ ANG +'deg)')
+      line.style["-webkit-transform"] = 'rotate('+ ANG +'deg)';
+      line.style["-moz-transform"] = 'rotate('+ ANG +'deg)';
+      line.style["-ms-transform"] = 'rotate('+ ANG +'deg)';
+      line.style["-o-transform"] = 'rotate('+ ANG +'deg)';
+      line.style["-transform"] = 'rotate('+ ANG +'deg)';
+      line.style.top    = top+'px';
+      line.style.left   = left+'px';
+      line.style.height = H + 'px';
+    }
+
+    function addLevel(){
+        let level = document.createElement("div");
+        level.className = "tree";
+        levels.push(level);
+        tree_container.appendChild(level);
+        tree_container.appendChild(document.createElement("hr"));
+    }
+    function addNode(page_name, page_id, parent, level, page){
+        let link = document.createElement("a");
+        link.className = "node";
+        link.href = window.location.protocol + '//' + window.location.hostname + ":" + window.location.port + "{% url 'page_form' 666666 %}".replace("666666", page_id);
+        nodes[page_id] = document.createElement("div");
+        nodes[page_id].className = "tree_element";
+        let p = document.createElement("p");
+        p.className = "node"
+        p.innerHTML = page_name;
+        nodes[page_id].appendChild(p);
+        if (levels.length<=level) addLevel();
+        link.appendChild(nodes[page_id])
+        levels[level].appendChild(link)
+        if (page.pk == page_id) nodes[page_id].style.background = "bisque";
+    }
+    function makeLines(tree){
+        for (let child of tree.child_ids) {
+            makeLines(child)
+            adjustLine(nodes[tree.pk], nodes[child.pk])
+        }
+    }
+    function makeTree(tree, page, level=0){
+        if (level == 0) {
+            addNode(tree.name, tree.pk, null, 0, page)
+            level++;
+        }
+        for (let child of tree.child_ids) {
+            addNode(child.name, child.pk, tree, level, page)
+            makeTree(child, page, level+1)
+        }
+        if (level == 1) {
+            makeLines(tree)
+        }
+    }
+</script>
+<script type="text/javascript">
+    var name_input = document.getElementById("name");
+    var content_input = document.getElementById("content");
+    var edit_button = document.getElementById("edit_button");
+    var save_button = document.getElementById("save_button");
+    var cancel_button = document.getElementById("cancel_button");
+    var delete_button = document.getElementById("delete_button");
+    var div_record_exist = document.getElementById("record_exist");
+    var div_record_deleted = document.getElementById("record_deleted");
+    var parent_select = document.getElementById("parent");
+
+    function send_request(url, method="GET", data=null)
+    {
+        var xmlHttp = new XMLHttpRequest();
+        xmlHttp.open( method, url, false, data=data );
+        xmlHttp.send( JSON.stringify(data));
+        return xmlHttp.responseText;
+    }
+    function save() {
+        link = window.location.protocol + '//' + window.location.hostname + ":" + window.location.port + "{% url 'api_form' "page" page.pk %}";
+        let parent_id = null
+        if (parent_select.selectedIndex != 0) parent_id = parseInt(parent_select.options[parent_select.selectedIndex].value);
+        data = {
+            "name": name_input.value,
+            "content": content_input.value,
+            "parent_id": parent_id
+        }
+        console.log(link);
+        console.log(data);
+        console.log(send_request(link, "POST", data));
+    }
+
+    function onEditClick() {
+        name_input.readOnly = false;
+        content_input.readOnly = false;
+        name_input.className = "";
+        content_input.className = "";
+        save_button.style.display = "inline-block";
+        cancel_button.style.display = "inline-block";
+        edit_button.style.display = "none";
+        delete_button.style.display = "none";
+        parent_select.disabled = false;
+    }
+    function onSaveClick() {
+        save();
+        document.location.reload();
+    }
+    function onDeleteClick() {
+        link = window.location.protocol + '//' + window.location.hostname + ":" + window.location.port + "{% url 'api_form' "page" page.pk %}";
+        console.log(send_request(link, "DELETE"));
+        div_record_deleted.style.display = "block";
+        div_record_exist.style.display = "none";
+    }
+    function fillAvailableParents(parent, available_parents){
+
+        for (let pg of available_parents){
+            let option = document.createElement("option")
+            option.innerHTML = pg.name
+            option.value = pg.pk
+            if (pg.pk == parent) option.selected = true;
+            parent_select.appendChild(option)
+        }
+    }
+    function start(page, tree, available_parents){
+        fillAvailableParents(page.parent_id, available_parents);
+        makeTree(tree, page)
+    }
+    edit_button.addEventListener("click", onEditClick)
+    save_button.addEventListener("click", onSaveClick)
+    cancel_button.addEventListener("click", () => document.location.reload())
+    delete_button.addEventListener("click", onDeleteClick)
+
+</script>
+
+</body>
+</html>

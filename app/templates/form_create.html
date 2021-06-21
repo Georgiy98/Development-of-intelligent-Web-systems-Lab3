@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+{% load static %}
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>New</title>
+    <link rel="stylesheet" type="text/css" href="{% static 'css/style.css' %}">
+</head>
+<body>
+    <a href="{% url 'page_list' %}"><button>Menu</button></a>
+    <button id="create_button">Save</button>
+    <p>Name:<input type="text" id="name" value="{{ page.name }}"></p>
+    <p>Content: <textarea type="text" id="content" value="{{ page.content }}" rows="20" cols="100"></textarea></p>
+    <p>Parent: <select id="parent">
+        <option value="" selected>---</option>
+        {% for page in page_list %}
+        <option value="{{ page.pk }}">{{ page.name }}</option>
+        {% endfor %}
+    </select></p>
+    <script type="text/javascript">
+        var name_input = document.getElementById("name");
+        var content_input = document.getElementById("content");
+        var create_button = document.getElementById("create_button");
+        var parent_select = document.getElementById("parent");
+
+        function send_request(url, method="GET", data=null)
+        {
+            var xmlHttp = new XMLHttpRequest();
+            xmlHttp.open( method, url, false, data=data );
+            xmlHttp.send( JSON.stringify(data));
+            return xmlHttp.responseText;
+        }
+        function create() {
+            link = window.location.protocol + '//' + window.location.hostname + ":" + window.location.port + "{% url 'api_list' "page" %}";
+            let parent_id = null
+            if (parent_select.selectedIndex != 0) parent_id = parseInt(parent_select.options[parent_select.selectedIndex].value);
+            data = {
+                "name": name_input.value,
+                "content": content_input.value,
+                "parent_id": parent_id
+            }
+            return JSON.parse(send_request(link, "POST", data)).id;
+        }
+
+        function onCreateClick() {
+            let link = window.location.protocol + '//' + window.location.hostname + ":" + window.location.port + "{% url 'page_form' 666666 %}".replace(666666, create());
+            window.location.replace(link);
+        }
+        create_button.addEventListener("click", onCreateClick)
+    </script>
+</body>
+</html>

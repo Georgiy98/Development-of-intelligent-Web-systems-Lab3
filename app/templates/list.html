@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+{% load static %}
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+    <link rel="stylesheet" type="text/css" href="{% static 'css/style.css' %}">
+</head>
+<body>
+<h2>Pages</h2>
+<a href="{% url 'page_create' %}"> <button>New</button></a>
+<ul>
+    {% for page in page_list %}
+    <a href="{% url 'page_form' page.pk %}">
+        <li>{{page.name}}</li>
+    </a>
+    {% endfor %}
+</ul>
+
+</body>
+</html>
